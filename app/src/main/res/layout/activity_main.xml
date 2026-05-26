@@ -39,8 +39,7 @@
         android:layout_marginBottom="72dp"
         android:text="VPN выкл"
         app:icon="@drawable/ic_vpn_lock"
-        app:backgroundTint="@color/error"
-        style="@style/Widget.Material3.ExtendedFloatingActionButton" />
+        app:backgroundTint="@color/error" />
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottom_nav"
