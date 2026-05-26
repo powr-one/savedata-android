@@ -3,7 +3,7 @@ package com.savedata.app.util
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
-import android.os.Build
+import android.util.Log
 import com.savedata.app.App
 
 data class AppInfo(
@@ -16,25 +16,49 @@ data class AppInfo(
 
 object AppInfoLoader {
 
+    private const val TAG = "AppInfoLoader"
+
     fun loadApps(): List<AppInfo> {
         val pm = App.instance.packageManager
-        val packages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            pm.getInstalledPackages(PackageManager.PackageInfoFlags.of(PackageManager.GET_META_DATA.toLong()))
-        } else {
+        return try {
             @Suppress("DEPRECATION")
-            pm.getInstalledPackages(PackageManager.GET_META_DATA)
+            val packages = pm.getInstalledPackages(0)
+            Log.d(TAG, "getInstalledPackages(0) returned ${packages.size} packages")
+            packages.mapNotNull { pkg ->
+                try {
+                    val appInfo = pkg.applicationInfo
+                    if (appInfo == null) {
+                        // fallback: try to get applicationInfo directly
+                        val ai = try {
+                            pm.getApplicationInfo(pkg.packageName, 0)
+                        } catch (_: Exception) { null } ?: return@mapNotNull null
+                        val isSystem = (ai.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                        AppInfo(
+                            packageName = pkg.packageName,
+                            appName = pm.getApplicationLabel(ai).toString(),
+                            uid = ai.uid,
+                            icon = null,
+                            isSystem = isSystem
+                        )
+                    } else {
+                        val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                        AppInfo(
+                            packageName = pkg.packageName,
+                            appName = pm.getApplicationLabel(appInfo).toString(),
+                            uid = appInfo.uid,
+                            icon = null,
+                            isSystem = isSystem
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Skipping ${pkg.packageName}: ${e.message}")
+                    null
+                }
+            }.sortedWith(compareBy<AppInfo> { it.isSystem }.thenBy { it.appName.lowercase() })
+        } catch (e: Exception) {
+            Log.e(TAG, "loadApps failed", e)
+            emptyList()
         }
-        return packages.mapNotNull { pkg ->
-            val appInfo = pkg.applicationInfo ?: return@mapNotNull null
-            val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-            AppInfo(
-                packageName = pkg.packageName,
-                appName = pm.getApplicationLabel(appInfo).toString(),
-                uid = appInfo.uid,
-                icon = null,
-                isSystem = isSystem
-            )
-        }.sortedWith(compareBy<AppInfo> { it.isSystem }.thenBy { it.appName.lowercase() })
     }
 
     fun loadIconFor(packageName: String): Drawable? =
