@@ -1,0 +1,4 @@
+-keep class com.savedata.app.data.** { *; }
+-keep class com.savedata.app.vpn.** { *; }
+-keepattributes *Annotation*
+-keepclassmembers class * extends androidx.room.RoomDatabase { *; }
