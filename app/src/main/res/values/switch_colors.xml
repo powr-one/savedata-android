@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <selector xmlns:android="http://schemas.android.com/apk/res/android" name="switch_thumb_color">
+        <item android:color="#FFFFFF" android:state_checked="true" />
+        <item android:color="#8A8FA8" />
+    </selector>
+
+    <selector xmlns:android="http://schemas.android.com/apk/res/android" name="switch_track_color">
+        <item android:color="#E05050" android:state_checked="true" />
+        <item android:color="#252836" />
+    </selector>
+</resources>
