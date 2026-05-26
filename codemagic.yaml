@@ -3,16 +3,35 @@ workflows:
     name: Save Data — Debug APK
     max_build_duration: 60
     environment:
+      java: 17
       vars:
         PACKAGE_NAME: "com.savedata.app"
+        GRADLE_VERSION: "8.7"
     scripts:
       - name: Set up local.properties
         script: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
+
+      - name: Install Gradle
+        script: |
+          GRADLE_ZIP="/tmp/gradle-${GRADLE_VERSION}-bin.zip"
+          GRADLE_DIR="/tmp/gradle-${GRADLE_VERSION}"
+          if [ ! -d "$GRADLE_DIR" ]; then
+            echo "Downloading Gradle ${GRADLE_VERSION}..."
+            curl -fsSL \
+              "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
+              -o "$GRADLE_ZIP"
+            unzip -q "$GRADLE_ZIP" -d /tmp/
+          fi
+          echo "GRADLE_HOME=$GRADLE_DIR" >> "$CM_ENV"
+          echo "PATH=$GRADLE_DIR/bin:$PATH" >> "$CM_ENV"
+
       - name: Build debug APK
         script: |
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          "$GRADLE_HOME/bin/gradle" assembleDebug \
+            --no-daemon \
+            --stacktrace
+
     artifacts:
       - app/build/outputs/apk/debug/app-debug.apk
 
@@ -20,22 +39,39 @@ workflows:
     name: Save Data — Release APK (signed)
     max_build_duration: 60
     environment:
+      java: 17
       android_signing:
         - keystore_reference
       vars:
         PACKAGE_NAME: "com.savedata.app"
+        GRADLE_VERSION: "8.7"
     scripts:
       - name: Set up local.properties
         script: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
+
+      - name: Install Gradle
+        script: |
+          GRADLE_ZIP="/tmp/gradle-${GRADLE_VERSION}-bin.zip"
+          GRADLE_DIR="/tmp/gradle-${GRADLE_VERSION}"
+          if [ ! -d "$GRADLE_DIR" ]; then
+            curl -fsSL \
+              "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
+              -o "$GRADLE_ZIP"
+            unzip -q "$GRADLE_ZIP" -d /tmp/
+          fi
+          echo "GRADLE_HOME=$GRADLE_DIR" >> "$CM_ENV"
+          echo "PATH=$GRADLE_DIR/bin:$PATH" >> "$CM_ENV"
+
       - name: Build release APK
         script: |
-          chmod +x gradlew
-          ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file=$CM_KEYSTORE_PATH \
-            -Pandroid.injected.signing.store.password=$CM_KEYSTORE_PASSWORD \
-            -Pandroid.injected.signing.key.alias=$CM_KEY_ALIAS \
-            -Pandroid.injected.signing.key.password=$CM_KEY_PASSWORD
+          "$GRADLE_HOME/bin/gradle" assembleRelease \
+            --no-daemon \
+            -Pandroid.injected.signing.store.file="$CM_KEYSTORE_PATH" \
+            -Pandroid.injected.signing.store.password="$CM_KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$CM_KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$CM_KEY_PASSWORD"
+
     artifacts:
       - app/build/outputs/apk/release/app-release.apk
       - app/build/outputs/bundle/release/app-release.aab
