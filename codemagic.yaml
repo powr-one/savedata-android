@@ -1,0 +1,32 @@
+workflows:
+  android-app:
+    name: Save Data Android Build
+    max_build_duration: 60
+    environment:
+      android_signing:
+        - keystore_reference
+      vars:
+        PACKAGE_NAME: "com.savedata.app"
+    scripts:
+      - name: Set up local.properties
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+      - name: Build debug APK
+        script: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - name: Build release APK (signed)
+        script: |
+          chmod +x gradlew
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=$CM_KEYSTORE_PATH \
+            -Pandroid.injected.signing.store.password=$CM_KEYSTORE_PASSWORD \
+            -Pandroid.injected.signing.key.alias=$CM_KEY_ALIAS \
+            -Pandroid.injected.signing.key.password=$CM_KEY_PASSWORD
+    artifacts:
+      - app/build/outputs/**/*.apk
+      - app/build/outputs/**/*.aab
+    publishing:
+      email:
+        recipients:
+          - user@example.com
