@@ -73,7 +73,7 @@ class AppRepository(
         prefs.edit().putBoolean("vpn_enabled", enabled).apply()
     }
 
-    fun isShowSystemApps(): Boolean = prefs.getBoolean("show_system_apps", false)
+    fun isShowSystemApps(): Boolean = prefs.getBoolean("show_system_apps", true)
 
     fun setShowSystemApps(show: Boolean) {
         prefs.edit().putBoolean("show_system_apps", show).apply()
