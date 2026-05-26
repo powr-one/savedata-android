@@ -9,6 +9,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.snackbar.Snackbar
 import com.savedata.app.R
 import com.savedata.app.databinding.FragmentAppsBinding
@@ -41,6 +42,7 @@ class AppsFragment : Fragment() {
         adapter = AppAdapter { packageName, blocked ->
             viewModel.setBlocked(packageName, blocked)
         }
+        binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
         binding.recyclerView.setHasFixedSize(true)
     }
