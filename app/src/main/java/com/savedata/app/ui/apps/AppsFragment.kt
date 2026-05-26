@@ -21,7 +21,11 @@ class AppsFragment : Fragment() {
     private val viewModel: AppsViewModel by viewModels()
     private lateinit var adapter: AppAdapter
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         _binding = FragmentAppsBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -30,7 +34,7 @@ class AppsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerView()
         setupMenu()
-        observeApps()
+        observeState()
     }
 
     private fun setupRecyclerView() {
@@ -75,13 +79,25 @@ class AppsFragment : Fragment() {
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
-    private fun observeApps() {
+    private fun observeState() {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.appList.collect { apps ->
-                    adapter.submitList(apps)
-                    binding.progressBar.visibility = if (apps.isEmpty()) View.VISIBLE else View.GONE
-                    binding.emptyText.visibility = if (apps.isEmpty()) View.VISIBLE else View.GONE
+                launch {
+                    viewModel.isLoading.collect { loading ->
+                        binding.progressBar.visibility =
+                            if (loading) View.VISIBLE else View.GONE
+                    }
+                }
+                launch {
+                    viewModel.appList.collect { apps ->
+                        adapter.submitList(apps)
+                        val isEmpty = apps.isEmpty() && !viewModel.isLoading.value
+                        binding.emptyText.visibility =
+                            if (isEmpty) View.VISIBLE else View.GONE
+                        if (isEmpty) {
+                            binding.emptyText.text = "Нет приложений"
+                        }
+                    }
                 }
             }
         }
