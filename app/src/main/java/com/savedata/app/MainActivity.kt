@@ -1,6 +1,7 @@
 package com.savedata.app
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.net.VpnService
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,15 +15,15 @@ import com.savedata.app.vpn.SaveDataVpnService
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private var vpnActive = false
 
     private val vpnPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == RESULT_OK) {
-            startVpn()
+            doStartVpn()
         } else {
             Snackbar.make(binding.root, "Разрешение VPN не предоставлено", Snackbar.LENGTH_SHORT).show()
-            binding.fabVpn.isChecked = false
         }
     }
 
@@ -30,23 +31,21 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         setSupportActionBar(binding.toolbar)
 
         val navHostFragment = supportFragmentManager
             .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
-        val navController = navHostFragment.navController
-        binding.bottomNav.setupWithNavController(navController)
+        binding.bottomNav.setupWithNavController(navHostFragment.navController)
 
-        binding.fabVpn.isChecked = SaveDataVpnService.isRunning
-
-        binding.fabVpn.addOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                requestVpnPermission()
-            } else {
-                stopVpn()
-            }
+        binding.fabVpn.setOnClickListener {
+            if (vpnActive) doStopVpn() else requestVpnPermission()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        vpnActive = SaveDataVpnService.isRunning
+        updateFabState(vpnActive)
     }
 
     private fun requestVpnPermission() {
@@ -54,28 +53,37 @@ class MainActivity : AppCompatActivity() {
         if (intent != null) {
             vpnPermissionLauncher.launch(intent)
         } else {
-            startVpn()
+            doStartVpn()
         }
     }
 
-    private fun startVpn() {
-        val intent = Intent(this, SaveDataVpnService::class.java).apply {
+    private fun doStartVpn() {
+        startForegroundService(Intent(this, SaveDataVpnService::class.java).apply {
             action = SaveDataVpnService.ACTION_START
-        }
-        startForegroundService(intent)
+        })
+        vpnActive = true
+        updateFabState(true)
         Snackbar.make(binding.root, "VPN активирован", Snackbar.LENGTH_SHORT).show()
     }
 
-    private fun stopVpn() {
-        val intent = Intent(this, SaveDataVpnService::class.java).apply {
+    private fun doStopVpn() {
+        startService(Intent(this, SaveDataVpnService::class.java).apply {
             action = SaveDataVpnService.ACTION_STOP
-        }
-        startService(intent)
+        })
+        vpnActive = false
+        updateFabState(false)
         Snackbar.make(binding.root, "VPN отключён", Snackbar.LENGTH_SHORT).show()
     }
 
-    override fun onResume() {
-        super.onResume()
-        binding.fabVpn.isChecked = SaveDataVpnService.isRunning
+    private fun updateFabState(active: Boolean) {
+        if (active) {
+            binding.fabVpn.text = getString(R.string.vpn_on)
+            binding.fabVpn.backgroundTintList =
+                ColorStateList.valueOf(getColor(R.color.success))
+        } else {
+            binding.fabVpn.text = getString(R.string.vpn_off)
+            binding.fabVpn.backgroundTintList =
+                ColorStateList.valueOf(getColor(R.color.error))
+        }
     }
 }
