@@ -30,7 +30,7 @@ workflows:
         script: |
           "$GRADLE_HOME/bin/gradle" assembleDebug \
             --no-daemon \
-            --stacktrace
+            --warning-mode all
 
     artifacts:
       - app/build/outputs/apk/debug/app-debug.apk
