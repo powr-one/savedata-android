@@ -23,6 +23,9 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
     private val _showSystem = MutableStateFlow(repository.isShowSystemApps())
     val showSystem: StateFlow<Boolean> = _showSystem.asStateFlow()
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
     private val _rawAppList = MutableStateFlow<List<AppInfo>>(emptyList())
 
     val appList: StateFlow<List<AppListItem>> = combine(
@@ -59,7 +62,17 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadApps() {
         viewModelScope.launch(Dispatchers.IO) {
-            _rawAppList.value = AppInfoLoader.loadApps(true)
+            _isLoading.value = true
+            // Phase 1: fast — load app names/UIDs without icons
+            val appsNoIcons = AppInfoLoader.loadApps()
+            _rawAppList.value = appsNoIcons
+            _isLoading.value = false
+
+            // Phase 2: load icons in background, update list
+            val appsWithIcons = appsNoIcons.map { info ->
+                info.copy(icon = AppInfoLoader.loadIconFor(info.packageName))
+            }
+            _rawAppList.value = appsWithIcons
         }
     }
 
