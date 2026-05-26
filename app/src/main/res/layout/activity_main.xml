@@ -38,7 +38,7 @@
         android:layout_margin="16dp"
         android:layout_marginBottom="72dp"
         android:text="VPN выкл"
-        app:icon="@android:drawable/ic_lock_idle_lock"
+        app:icon="@drawable/ic_vpn_lock"
         app:backgroundTint="@color/error"
         style="@style/Widget.Material3.ExtendedFloatingActionButton" />
 
