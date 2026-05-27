@@ -18,11 +18,10 @@ class AppAdapter(
             binding.appName.text = item.appName
             binding.packageName.text = item.packageName
 
-            val totalFormatted = AppInfoLoader.formatBytes(item.totalBytes)
-            val rxFormatted = AppInfoLoader.formatBytes(item.rxBytes)
-            val txFormatted = AppInfoLoader.formatBytes(item.txBytes)
-            binding.trafficInfo.text = "↓$rxFormatted  ↑$txFormatted"
-            binding.trafficTotal.text = totalFormatted
+            val fmt = AppInfoLoader::formatBytes
+            binding.trafficWifi.text   = "📶 ↓${fmt(item.rxWifi)}  ↑${fmt(item.txWifi)}"
+            binding.trafficMobile.text = "📱 ↓${fmt(item.rxMobile)}  ↑${fmt(item.txMobile)}"
+            binding.trafficTotal.text  = fmt(item.totalBytes)
 
             binding.blockSwitch.setOnCheckedChangeListener(null)
             binding.blockSwitch.isChecked = item.isBlocked
@@ -51,7 +50,6 @@ class AppAdapter(
         val DIFF = object : DiffUtil.ItemCallback<AppListItem>() {
             override fun areItemsTheSame(old: AppListItem, new: AppListItem) =
                 old.packageName == new.packageName
-
             override fun areContentsTheSame(old: AppListItem, new: AppListItem) =
                 old == new
         }
