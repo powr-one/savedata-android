@@ -115,11 +115,15 @@ class PacketForwarder(private val vpnService: VpnService) {
         tcpHeader: IpPacketUtils.TcpHeader,
         out: FileOutputStream
     ) {
+        // Use blocking mode so we don't busy-spin when no data is available
+        try { session.channel.configureBlocking(true) } catch (_: Exception) { }
         val buf = ByteBuffer.allocate(16384)
         try {
             while (tcpSessions.containsKey(key)) {
                 buf.clear()
-                val read = withContext(Dispatchers.IO) { session.channel.read(buf) }
+                val read = withContext(Dispatchers.IO) {
+                    try { session.channel.read(buf) } catch (e: Exception) { -1 }
+                }
                 if (read < 0) break
                 if (read > 0) {
                     buf.flip()
@@ -130,9 +134,8 @@ class PacketForwarder(private val vpnService: VpnService) {
                     withContext(Dispatchers.IO) {
                         try { out.write(responsePacket) } catch (e: Exception) { }
                     }
-                } else {
-                    delay(5)
                 }
+                // no delay() needed — blocking read parks the coroutine until data arrives
             }
         } catch (e: Exception) {
             Log.w(SaveDataVpnService.TAG, "Read from socket error: ${e.message}")
@@ -164,22 +167,23 @@ class PacketForwarder(private val vpnService: VpnService) {
                 val dst = InetSocketAddress(InetAddress.getByName(dstIp), udpHeader.dstPort)
                 channel.send(ByteBuffer.wrap(data), dst)
 
+                // Switch to blocking mode to receive the response without busy-polling
+                channel.configureBlocking(true)
+                channel.socket().soTimeout = 2000
                 val recvBuf = ByteBuffer.allocate(16384)
-                var attempts = 0
-                while (attempts++ < 10) {
-                    recvBuf.clear()
-                    val from = channel.receive(recvBuf)
-                    if (from != null) {
-                        recvBuf.flip()
-                        val responseData = ByteArray(recvBuf.limit())
-                        recvBuf.get(responseData)
-                        val responsePacket = buildUdpResponse(ipHeader, udpHeader, responseData)
-                        withContext(Dispatchers.IO) {
-                            try { out.write(responsePacket) } catch (e: Exception) { }
-                        }
-                        break
+                recvBuf.clear()
+                val from = withContext(Dispatchers.IO) {
+                    try { channel.receive(recvBuf) } catch (_: Exception) { null }
+                }
+                channel.configureBlocking(false)
+                if (from != null) {
+                    recvBuf.flip()
+                    val responseData = ByteArray(recvBuf.limit())
+                    recvBuf.get(responseData)
+                    val responsePacket = buildUdpResponse(ipHeader, udpHeader, responseData)
+                    withContext(Dispatchers.IO) {
+                        try { out.write(responsePacket) } catch (e: Exception) { }
                     }
-                    delay(10)
                 }
             } catch (e: Exception) {
                 Log.w(SaveDataVpnService.TAG, "UDP forward error: ${e.message}")
