@@ -1,14 +1,18 @@
 package com.savedata.app
 
 import android.content.Intent
-import android.content.res.ColorStateList
 import android.net.VpnService
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.MenuProvider
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.switchmaterial.SwitchMaterial
 import com.savedata.app.databinding.ActivityMainBinding
 import com.savedata.app.vpn.SaveDataVpnService
 
@@ -16,6 +20,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private var vpnActive = false
+    private var vpnSwitch: SwitchMaterial? = null
 
     private val vpnPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -23,6 +28,7 @@ class MainActivity : AppCompatActivity() {
         if (result.resultCode == RESULT_OK) {
             doStartVpn()
         } else {
+            setSwitch(false)
             Snackbar.make(binding.root, "Разрешение VPN не предоставлено", Snackbar.LENGTH_SHORT).show()
         }
     }
@@ -37,15 +43,36 @@ class MainActivity : AppCompatActivity() {
             .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         binding.bottomNav.setupWithNavController(navHostFragment.navController)
 
-        binding.fabVpn.setOnClickListener {
-            if (vpnActive) doStopVpn() else requestVpnPermission()
-        }
+        addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                menuInflater.inflate(R.menu.menu_main, menu)
+                val actionView = menu.findItem(R.id.action_vpn_toggle)?.actionView
+                vpnSwitch = actionView?.findViewById(R.id.switch_vpn)
+                setSwitch(SaveDataVpnService.isRunning)
+                wireSwitch()
+            }
+            override fun onMenuItemSelected(item: MenuItem) = false
+        })
     }
 
     override fun onResume() {
         super.onResume()
         vpnActive = SaveDataVpnService.isRunning
-        updateFabState(vpnActive)
+        setSwitch(vpnActive)
+        wireSwitch()
+    }
+
+    private fun wireSwitch() {
+        vpnSwitch?.setOnCheckedChangeListener(null)
+        vpnSwitch?.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) requestVpnPermission() else doStopVpn()
+        }
+    }
+
+    private fun setSwitch(on: Boolean) {
+        vpnSwitch?.setOnCheckedChangeListener(null)
+        vpnSwitch?.isChecked = on
+        wireSwitch()
     }
 
     private fun requestVpnPermission() {
@@ -62,7 +89,7 @@ class MainActivity : AppCompatActivity() {
             action = SaveDataVpnService.ACTION_START
         })
         vpnActive = true
-        updateFabState(true)
+        setSwitch(true)
         Snackbar.make(binding.root, "VPN активирован", Snackbar.LENGTH_SHORT).show()
     }
 
@@ -71,19 +98,7 @@ class MainActivity : AppCompatActivity() {
             action = SaveDataVpnService.ACTION_STOP
         })
         vpnActive = false
-        updateFabState(false)
+        setSwitch(false)
         Snackbar.make(binding.root, "VPN отключён", Snackbar.LENGTH_SHORT).show()
-    }
-
-    private fun updateFabState(active: Boolean) {
-        if (active) {
-            binding.fabVpn.text = getString(R.string.vpn_on)
-            binding.fabVpn.backgroundTintList =
-                ColorStateList.valueOf(getColor(R.color.success))
-        } else {
-            binding.fabVpn.text = getString(R.string.vpn_off)
-            binding.fabVpn.backgroundTintList =
-                ColorStateList.valueOf(getColor(R.color.error))
-        }
     }
 }
