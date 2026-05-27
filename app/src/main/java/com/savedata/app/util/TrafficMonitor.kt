@@ -1,11 +1,11 @@
 package com.savedata.app.util
 
 import android.app.AppOpsManager
+import android.app.usage.NetworkStats
+import android.app.usage.NetworkStatsManager
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.net.ConnectivityManager
-import android.net.NetworkStats
-import android.net.NetworkStatsManager
 import android.net.TrafficStats
 import android.os.Process
 import android.util.Log
@@ -46,7 +46,7 @@ class TrafficMonitor(private val scope: CoroutineScope) {
     private var packageCacheTime = 0L
 
     private val networkStatsManager: NetworkStatsManager by lazy {
-        App.instance.getSystemService(Context.NETWORK_STATS_SERVICE) as NetworkStatsManager
+        App.instance.getSystemService(NetworkStatsManager::class.java)!!
     }
 
     fun start() {
