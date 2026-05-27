@@ -10,7 +10,11 @@ data class AppListItem(
     val isSystem: Boolean,
     val isBlocked: Boolean,
     val rxBytes: Long,
-    val txBytes: Long
+    val txBytes: Long,
+    val rxWifi: Long = 0L,
+    val txWifi: Long = 0L,
+    val rxMobile: Long = 0L,
+    val txMobile: Long = 0L
 ) {
     val totalBytes: Long get() = rxBytes + txBytes
 }
