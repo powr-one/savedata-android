@@ -1,19 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
+
     <item
         android:id="@+id/action_search"
         android:title="Поиск"
         android:icon="@drawable/ic_action_search"
         app:showAsAction="ifRoom|collapseActionView"
         app:actionViewClass="androidx.appcompat.widget.SearchView" />
+
     <item
-        android:id="@+id/action_reset_traffic"
-        android:title="Сбросить счётчики"
+        android:id="@+id/action_sort_data"
+        android:title="По трафику"
+        android:checkable="true"
+        android:checked="true"
         app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_sort_name"
+        android:title="По имени"
+        android:checkable="true"
+        app:showAsAction="never" />
+
     <item
         android:id="@+id/action_show_system"
         android:title="Системные приложения"
         android:checkable="true"
         app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_reset_traffic"
+        android:title="Сбросить счётчики"
+        app:showAsAction="never" />
+
 </menu>
