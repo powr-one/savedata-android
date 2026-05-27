@@ -51,6 +51,13 @@ class AppsFragment : Fragment() {
         requireActivity().addMenuProvider(object : MenuProvider {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
                 menuInflater.inflate(R.menu.menu_apps, menu)
+
+                // Reflect current sort state
+                val isByData = viewModel.sortOrder.value == SortOrder.BY_DATA
+                menu.findItem(R.id.action_sort_data)?.isChecked = isByData
+                menu.findItem(R.id.action_sort_name)?.isChecked = !isByData
+                menu.findItem(R.id.action_show_system)?.isChecked = viewModel.showSystem.value
+
                 val searchItem = menu.findItem(R.id.action_search)
                 val searchView = searchItem.actionView as SearchView
                 searchView.queryHint = "Поиск приложений..."
@@ -65,6 +72,18 @@ class AppsFragment : Fragment() {
 
             override fun onMenuItemSelected(item: MenuItem): Boolean {
                 return when (item.itemId) {
+                    R.id.action_sort_data -> {
+                        item.isChecked = true
+                        requireActivity().invalidateOptionsMenu()
+                        viewModel.setSortOrder(SortOrder.BY_DATA)
+                        true
+                    }
+                    R.id.action_sort_name -> {
+                        item.isChecked = true
+                        requireActivity().invalidateOptionsMenu()
+                        viewModel.setSortOrder(SortOrder.BY_NAME)
+                        true
+                    }
                     R.id.action_reset_traffic -> {
                         viewModel.resetTraffic()
                         Snackbar.make(binding.root, "Счётчики сброшены", Snackbar.LENGTH_SHORT).show()
@@ -96,9 +115,7 @@ class AppsFragment : Fragment() {
                         val isEmpty = apps.isEmpty() && !viewModel.isLoading.value
                         binding.emptyText.visibility =
                             if (isEmpty) View.VISIBLE else View.GONE
-                        if (isEmpty) {
-                            binding.emptyText.text = "Нет приложений"
-                        }
+                        if (isEmpty) binding.emptyText.text = "Нет приложений"
                     }
                 }
             }
