@@ -12,6 +12,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
+enum class SortOrder { BY_DATA, BY_NAME }
+
 class AppsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = App.instance.repository
@@ -26,9 +28,13 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _sortOrder = MutableStateFlow(SortOrder.BY_DATA)
+    val sortOrder: StateFlow<SortOrder> = _sortOrder.asStateFlow()
+
     private val _rawAppList = MutableStateFlow<List<AppInfo>>(emptyList())
 
-    val appList: StateFlow<List<AppListItem>> = combine(
+    // Stage 1: filter + map (5 flows)
+    private val filteredList: Flow<List<AppListItem>> = combine(
         _rawAppList,
         repository.allRules,
         trafficMonitor.traffic,
@@ -48,11 +54,22 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
                     icon = info.icon,
                     isSystem = info.isSystem,
                     isBlocked = ruleMap[info.packageName]?.blocked ?: false,
-                    rxBytes = t?.rxSincePeriod ?: 0L,
-                    txBytes = t?.txSincePeriod ?: 0L
+                    rxBytes   = t?.rxSincePeriod ?: 0L,
+                    txBytes   = t?.txSincePeriod ?: 0L,
+                    rxWifi    = t?.rxWifi   ?: 0L,
+                    txWifi    = t?.txWifi   ?: 0L,
+                    rxMobile  = t?.rxMobile ?: 0L,
+                    txMobile  = t?.txMobile ?: 0L
                 )
             }
-            .sortedByDescending { it.totalBytes }
+    }
+
+    // Stage 2: sort
+    val appList: StateFlow<List<AppListItem>> = combine(filteredList, _sortOrder) { list, sort ->
+        when (sort) {
+            SortOrder.BY_DATA -> list.sortedByDescending { it.totalBytes }
+            SortOrder.BY_NAME -> list.sortedBy { it.appName.lowercase() }
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
@@ -63,12 +80,10 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
     private fun loadApps() {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
-            // Phase 1: fast — load app names/UIDs without icons
             val appsNoIcons = AppInfoLoader.loadApps()
             _rawAppList.value = appsNoIcons
             _isLoading.value = false
-
-            // Phase 2: load icons in background, update list
+            // Phase 2: load icons in background
             val appsWithIcons = appsNoIcons.map { info ->
                 info.copy(icon = AppInfoLoader.loadIconFor(info.packageName))
             }
@@ -77,25 +92,21 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setBlocked(packageName: String, blocked: Boolean) {
-        viewModelScope.launch {
-            repository.setBlocked(packageName, blocked)
-        }
+        viewModelScope.launch { repository.setBlocked(packageName, blocked) }
     }
 
-    fun setSearch(query: String) {
-        _searchQuery.value = query
-    }
+    fun setSearch(query: String) { _searchQuery.value = query }
 
     fun toggleShowSystem(show: Boolean) {
         _showSystem.value = show
         repository.setShowSystemApps(show)
     }
 
+    fun setSortOrder(order: SortOrder) { _sortOrder.value = order }
+
     fun resetTraffic() {
         trafficMonitor.resetBaselines()
-        viewModelScope.launch {
-            repository.resetAllTraffic()
-        }
+        viewModelScope.launch { repository.resetAllTraffic() }
     }
 
     override fun onCleared() {
